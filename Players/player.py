@@ -2,10 +2,13 @@
 
 import unirest
 import json
+from sunshine4py import sunshineexceptions
 
 class SunshinePlayer:
     def setPlayerAttributes(self, data):
         for key, value in data.items():
+            if key == 'errors':
+                raise sunshineexceptions.PlayerError
             setattr(self, str(key), value)
             if isinstance(value, dict):
                 data = value
