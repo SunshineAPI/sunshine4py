@@ -9,12 +9,17 @@ class SunshinePlayer:
         for key, value in data.items():
             if key == 'errors':
                 raise sunshineexceptions.PlayerError
+            if hasattr(self, str(key)):
+                setattr(self, str(self.dict_name + '_' + key), value)
             setattr(self, str(key), value)
             if isinstance(value, dict):
                 data = value
+                self.dict_name = key
                 self.setPlayerAttributes(data)
 
     def __init__(self, name, url):
-        self.player_data = json.dumps(unirest.get('http://' + url, header={"Content-Type":"application/json"}).body)
+        self.name = name
+        self.player_data = json.dumps(unirest.get('http://' + url, header={"Accept":"application/json"}).body)
         parsed_data = json.loads(self.player_data)
+        self.dict_name=''
         self.setPlayerAttributes(parsed_data)

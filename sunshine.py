@@ -5,6 +5,7 @@ import json
 import urllib
 import socket
 from Players.player import SunshinePlayer
+from Teams.team import SunshineTeams
 try:
     from pip import get_installed_distributions
     packages = get_installed_distributions()
@@ -38,6 +39,40 @@ class Sunshine:
             print self.ip_addr
         except Exception as e:
             print str(e) + ', unable to connect to server'
+        self.url = '{0}:{1}'.format(self.server, self.port)
     def getPlayer(self, name):
-        player_url = join('{0}:{1}'.format(self.server, self.port), 'players', name)
+        player_url = join(self.url, 'players', name)
         return SunshinePlayer(name, player_url)
+    def getTeams(self, *page_nums):
+        teams_urls = []
+        print page_nums
+        if len(page_nums) == 1:
+            if isinstance(page_nums[0], int):
+                teams_urls.append(join('http://', self.url, 'teams', '?page={0}'.format(page_nums[0])))
+            elif isinstance(page_nums[0], str):
+                if page_nums[0].count('-') == 1:
+                    page_range = page_nums[0].split('-')
+                    for item in page_range:
+                        if not item.isdigit():
+                            raise ValueError('Invalid page numbers.')
+                            return
+                        ind=page_range.index(item)
+                        page_range[ind]=int(item)
+                    page_range.sort()
+                    for i in range(page_range[0], page_range[1]+1):
+                        teams_urls.append(join('http://', self.url, 'teams', '?page={0}'.format(i)))
+                elif page_nums[0].isdigit():
+                    teams_urls.append(join('http://', self.url, 'teams', '?page={0}'.format(page_nums[0])))
+                else:
+                    raise ValueError('Invalid page number.')
+        elif len(page_nums) > 1:
+            for item in page_nums:
+                if isinstance(item, str):
+                    if not item.isdigit():
+                        raise ValueError('Invalid page numbers.')
+                        return
+                if not isinstance(item, int):
+                    raise ValueError('Invalid page numbers.')
+                    return
+                teams_urls.append(join('http://', self.url, 'teams', '?page={0}'.format(str(item))))
+        return SunshineTeams(teams_urls)
