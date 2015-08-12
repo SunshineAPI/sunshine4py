@@ -5,7 +5,7 @@ class BaseSunshineException(Exception):
         pass
 
 class Redirection(BaseSunshineException):
-    """Raised for 4xx codes."""
+    """Raised for 3xx codes."""
 
 class SunshineClientError(BaseSunshineException):
     """Raised for 4xx codes."""
