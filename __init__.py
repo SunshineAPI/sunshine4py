@@ -1,11 +1,18 @@
 #!/usr/bin/env python
 
+"""This is a Python package which is a wrapper for the
+SunshineAPI (http://github.com/SunshineAPI). To use it,
+create an instance of the class Sunshine to retrieve
+information from a Sunshine server."""
+
 from sunshine4py import Players
 from sunshine4py import sunshineexceptions
 from sunshine4py import Teams
+from sunshine4py import Stats
 from os.path import join
 from Teams.team import SunshineTeams
 from Players.player import SunshinePlayer
+from Stats.stat import SunshineStats
 import json
 import urllib
 import socket
@@ -13,7 +20,7 @@ import socket
 try:
     from pip import get_installed_distributions
     packages = get_installed_distributions()
-    packages_list = sorted(["%s" % (i.key) for i in packages])
+    packages_list = sorted(("%s" % (i.key) for i in packages))
     if 'unirest' in packages_list:
         import unirest
 except ImportError as e:
@@ -23,7 +30,14 @@ except Exception:
     print 'Unexpected exception'
 
 class Sunshine:
-    def __init__(self, server, port):
+    """Sunshine class. To create an instance of this class, execute
+    sunshine4py.Sunshine(). If you pass in no arguments, it creates
+    an instance from the server hosting the website sunshine-api.com
+    at port 80. You can pass in arguments to create an instance of
+    the Sunshine class from your own server. To do this, simply enter
+    either the IP address of your server, or the domain name.
+    (Without the http://.)"""
+    def __init__(self, server='sunshine-api.com', port=80):
         self.server = server
         self.port = port
         if not isinstance(server, str):
@@ -42,10 +56,12 @@ class Sunshine:
             self.ip_addr = socket.gethostbyname(server)
             print self.ip_addr
         except Exception as e:
-            print str(e) + ', unable to connect to server'
+            raise sunshineexceptions.SunshineError(404)
         self.url = '{0}:{1}'.format(self.server, self.port)
     def getPlayer(self, name):
         player_url = join(self.url, 'players', name)
+        if not str(unirest.get('http://' + player_url)).startswith('2'):
+            raise sunshineexceptions.SunshineError
         return SunshinePlayer(name, player_url)
     def getTeams(self, *page_nums):
         teams_urls = []
@@ -80,3 +96,46 @@ class Sunshine:
                     return
                 teams_urls.append(join('http://', self.url, 'teams', '?page={0}'.format(str(item))))
         return SunshineTeams(teams_urls)
+    def getStats(self, time, game, sort, *page_nums):
+        time_types = ['day', 'week', 'eternity']
+        game_types = ['all', 'projectares', 'ghostsquadron']
+        sort_types = ['kills', 'deaths', 'kd', 'kk', 'cores_leaked', 'wool_placed', 'destroyed_destroyables', 'playing_time']
+        if not time in time_types:
+            raise AttributeError('Invalid sort options.')
+        if not game in game_types:
+            raise AttributeError('Invalid sort options')
+        if not sort in sort_types:
+            raise AttributeError('Invalid sort options')
+        url_list = []
+        if len(page_nums) > 1:
+            for i in page_nums:
+                assert isinstance(i, int)
+        elif len(page_nums) == 1:
+            page_nums_list = []
+            page_range = []
+            assert isinstance(page_nums[0], int) or isinstance(page_nums[0], str)
+            page_nums = str(page_nums[0])
+            if isinstance(page_nums, str):
+                if page_nums.count(',') >= 1:
+                    page_nums_list = page_nums.split(',')
+                    for i in page_nums_list:
+                        assert i.isdigit()
+                elif page_nums.count('-') == 1:
+                    page_range = page_nums.split('-')
+                    assert len(page_range) == 2
+                    for i in page_range:
+                        assert i.isdigit()
+                        page_range[page_range.index(i)] = int(i)
+            if page_nums_list:
+                for i in page_nums_list:
+                    url_list.append(join('http://', self.url, 'stats',
+                        '?time={0}&game={1}&sort={2}&page={3}'.format(time, game, sort, i)))
+            elif page_range:
+                for i in range(int(page_range[0]), int(page_range[1])+1):
+                    url_list.append(join('http://', self.url, 'stats',
+                        '?time={0}&game={1}&sort={2}&page={3}'.format(time, game, sort, i)))
+            elif len(page_range) == 0 and len(page_nums_list) == 0:
+                for i in page_nums:
+                    url_list.append(join('http://', self.url, 'stats',
+                        '?time={0}&game={1}&sort={2}&page={3}'.format(time, game, sort, i)))
+        return SunshineStats(url_list)
