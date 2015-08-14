@@ -9,10 +9,13 @@ from sunshine4py import Players
 from sunshine4py import sunshineexceptions
 from sunshine4py import Teams
 from sunshine4py import Stats
+from sunshine4py import Tournaments
 from os.path import join
 from Teams.team import SunshineTeams
 from Players.player import SunshinePlayer
 from Stats.stat import SunshineStats
+from Tournaments.tournament import SunshineTournament
+from Tournaments.tournaments import SunshineTournamentList
 import json
 import urllib
 import socket
@@ -24,20 +27,21 @@ try:
     if 'unirest' in packages_list:
         import unirest
 except ImportError as e:
-    print str(e) + ', Cannot import Unirest, either you don\'t have it installed, \n \
-           or it isn\'t installed properly. ' + str(e)
+    raise ImportError(', Cannot import Unirest, either you don\'t have it installed, \n \
+           or it isn\'t installed properly. ')
 except Exception:
     print 'Unexpected exception'
 
 class Sunshine:
     """Sunshine class. To create an instance of this class, execute
     sunshine4py.Sunshine(). If you pass in no arguments, it creates
-    an instance from the server hosting the website sunshine-api.com
-    at port 80. You can pass in arguments to create an instance of
-    the Sunshine class from your own server. To do this, simply enter
+     an instance from your localhost at port 3000. You can pass in
+    arguments to create an instance of the Sunshine class from
+    A different server. To do this, simply pass in the arguments
     either the IP address of your server, or the domain name.
+    ex. sunshine4py.Sunshine('sunshine-api.com', 80)
     (Without the http://.)"""
-    def __init__(self, server='sunshine-api.com', port=80):
+    def __init__(self, server='localhost', port=3000):
         self.server = server
         self.port = port
         if not isinstance(server, str):
@@ -60,8 +64,6 @@ class Sunshine:
         self.url = '{0}:{1}'.format(self.server, self.port)
     def getPlayer(self, name):
         player_url = join(self.url, 'players', name)
-        if not str(unirest.get('http://' + player_url)).startswith('2'):
-            raise sunshineexceptions.SunshineError
         return SunshinePlayer(name, player_url)
     def getTeams(self, *page_nums):
         teams_urls = []
@@ -103,9 +105,9 @@ class Sunshine:
         if not time in time_types:
             raise AttributeError('Invalid sort options.')
         if not game in game_types:
-            raise AttributeError('Invalid sort options')
+            raise AttributeError('Invalid sort options.')
         if not sort in sort_types:
-            raise AttributeError('Invalid sort options')
+            raise AttributeError('Invalid sort options.')
         url_list = []
         if len(page_nums) > 1:
             for i in page_nums:
@@ -139,3 +141,12 @@ class Sunshine:
                     url_list.append(join('http://', self.url, 'stats',
                         '?time={0}&game={1}&sort={2}&page={3}'.format(time, game, sort, i)))
         return SunshineStats(url_list)
+    def getTournament(self, name):
+        if name.count(' ') >= 1:
+            name = '-'.join(name.split()).lower()
+        else:
+            name = name.lower()
+        url = join('http://', self.url, 'tournaments', name)
+        return SunshineTournament(url)
+    def getTournamentList(self):
+        return SunshineTournamentList(join('http://', self.url, 'tournaments'))

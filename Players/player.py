@@ -19,7 +19,10 @@ class SunshinePlayer:
 
     def __init__(self, name, url):
         self.name = name
-        self.player_data = json.dumps(unirest.get('http://' + url, header={"Accept":"application/json"}).body)
+        self.player_data, self.return_code = json.dumps(unirest.get('http://' + url, header={"Accept":"application/json"}).body), \
+        unirest.get('http://' + url).code
+        if not str(self.return_code).startswith('2'):
+            raise sunshineexceptions.SunshineError(code)
         parsed_data = json.loads(self.player_data)
         self.dict_name=''
         self.setPlayerAttributes(parsed_data)
