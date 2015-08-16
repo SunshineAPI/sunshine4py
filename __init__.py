@@ -5,6 +5,27 @@ SunshineAPI (http://github.com/SunshineAPI). To use it,
 create an instance of the class Sunshine to retrieve
 information from a Sunshine server."""
 
+try:
+    from pip import get_installed_distributions, main
+    packages = get_installed_distributions()
+    packages_list = sorted(("%s" % (i.key) for i in packages))
+    if 'unirest' in packages_list:
+        import unirest
+    else:
+        raise ImportError
+except ImportError as e:
+    print 'You do not have unirest installed. Attempting to install unirest...'
+    try:
+        main(['install', 'unirest'])
+    except Exception as e:
+        print 'Failed to install unirest. Try installing it manually with \n \
+        `pip install unirest`'
+        print str(e)
+
+except Exception:
+    print 'Unexpected exception'
+
+
 from sunshine4py import Players
 from sunshine4py import sunshineexceptions
 from sunshine4py import Teams
@@ -19,18 +40,6 @@ from Tournaments.tournaments import SunshineTournamentList
 import json
 import urllib
 import socket
-
-try:
-    from pip import get_installed_distributions
-    packages = get_installed_distributions()
-    packages_list = sorted(("%s" % (i.key) for i in packages))
-    if 'unirest' in packages_list:
-        import unirest
-except ImportError as e:
-    raise ImportError(', Cannot import Unirest, either you don\'t have it installed, \n \
-           or it isn\'t installed properly. ')
-except Exception:
-    print 'Unexpected exception'
 
 class Sunshine:
     """Sunshine class. To create an instance of this class, execute
