@@ -32,7 +32,8 @@ from sunshine4py import Teams
 from sunshine4py import Stats
 from sunshine4py import Tournaments
 from os.path import join
-from Teams.team import SunshineTeams
+from Teams.teams import SunshineTeams
+from Teams.team import SunshineTeam
 from Players.player import SunshinePlayer
 from Stats.stat import SunshineStats
 from Tournaments.tournament import SunshineTournament
@@ -175,3 +176,10 @@ class Sunshine:
         else:
             return unirest.get(join('http://', self.url, 'alerts'),
                     headers={"Authorization":"Bearer {0}".format(auth_token)}).body['data']
+    def getTeam(self, name):
+        self.return_code = unirest.get(join('http://', self.url, 'teams', name)).code
+        self.team_url = join('http://', self.url, 'teams', name)
+        if not str(self.return_code).startswith('2'):
+            raise sunshineexceptions.SunshineError(self.return_code)
+        else:
+            return SunshineTeam(self.team_url)
