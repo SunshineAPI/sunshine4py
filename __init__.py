@@ -67,7 +67,6 @@ class Sunshine:
         try:
             self.server_connection.connect((server, port))
             self.ip_addr = socket.gethostbyname(server)
-            print self.ip_addr
         except Exception as e:
             raise sunshineexceptions.SunshineError(404)
         self.url = '{0}:{1}'.format(self.server, self.port)
@@ -159,3 +158,20 @@ class Sunshine:
         return SunshineTournament(url)
     def getTournamentList(self):
         return SunshineTournamentList(join('http://', self.url, 'tournaments'))
+    def getAuth(self, email, password):
+        self.return_code = unirest.post(join('http://', self.url, 'players', 'auth'),
+            headers={"Content-Type":"application/json", "Authorization":"Basic","Accept":"application/json"},
+            params=json.dumps({"email":"{0}".format(email),"password":"{0}".format(password)})).code
+        if not str(self.return_code).startswith('2'):
+            raise sunshineexceptions.SunshineError(self.return_code)
+        else:
+            return str(unirest.post(join('http://', self.url, 'players', 'auth'),
+                headers={"Content-Type":"application/json", "Authorization":"Basic","Accept":"application/json"},
+                params=json.dumps({"email":"{0}".format(email),"password":"{0}".format(password)})).body['token'])
+    def getAlerts(self, auth_token):
+        self.return_code = unirest.get(join('http://', self.url, 'alerts'),headers={"Authorization":"Bearer {0}".format(auth_token)}).code
+        if not str(self.return_code).startswith('2'):
+            raise sunshineexceptions.SunshineError(self.return_code)
+        else:
+            return unirest.get(join('http://', self.url, 'alerts'),
+                    headers={"Authorization":"Bearer {0}".format(auth_token)}).body['data']
