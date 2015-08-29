@@ -29,7 +29,7 @@ class SunshineTeams:
                 self.parsed_data['data'] += json.loads(json.dumps(unirest.get(url, headers={'Accept':'application/json'}).body))['data']
                 self.return_code = unirest.get(url).code
                 if not str(self.return_code.startswith('2')):
-                    raise sunshineexceptions.SunshineError(code)
+                    raise sunshineexceptions.SunshineError(self.return_code)
         self.teams = {}
         self.team_list = []
         self.setTeamList(self.parsed_data)

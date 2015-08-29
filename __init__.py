@@ -4,9 +4,19 @@
 SunshineAPI (http://github.com/SunshineAPI). To use it,
 create an instance of the class Sunshine to retrieve
 information from a Sunshine server."""
+import sys
+from os.path import expanduser
+
+if 'pypy' in sys.prefix:
+    print 'It has been detected you are using pypy. Adding Python \n \
+    site packages to sys.path...'
+    sys.path.append('/usr/lib/python2.7/dist-packages')
+    sys.path.append(expanduser('~') + '/.local/lib/python2.7/site-packages')
+    sys.path.append(expanduser('~') + '/.local/lib/python2.7/dist-packages')
+
+from pip import get_installed_distributions, main
 
 try:
-    from pip import get_installed_distributions, main
     packages = get_installed_distributions()
     packages_list = sorted(("%s" % (i.key) for i in packages))
     if 'unirest' in packages_list:
@@ -31,6 +41,7 @@ from sunshine4py import sunshineexceptions
 from sunshine4py import Teams
 from sunshine4py import Stats
 from sunshine4py import Tournaments
+from sunshine4py import Forums
 from os.path import join
 from Teams.teams import SunshineTeams
 from Teams.team import SunshineTeam
@@ -38,6 +49,7 @@ from Players.player import SunshinePlayer
 from Stats.stat import SunshineStats
 from Tournaments.tournament import SunshineTournament
 from Tournaments.tournaments import SunshineTournamentList
+from Forums.forum_topic import SunshineTopic
 import json
 import urllib
 import socket
@@ -54,6 +66,7 @@ class Sunshine:
     def __init__(self, server='localhost', port=3000):
         self.server = server
         self.port = port
+        socket.setdefaulttimeout(1)
         if not isinstance(server, str):
             raise TypeError("Server address must be str")
         elif not isinstance(port, int):
@@ -107,16 +120,7 @@ class Sunshine:
                     return
                 teams_urls.append(join('http://', self.url, 'teams', '?page={0}'.format(str(item))))
         return SunshineTeams(teams_urls)
-    def getStats(self, time, game, sort, *page_nums):
-        time_types = ['day', 'week', 'eternity']
-        game_types = ['all', 'projectares', 'ghostsquadron']
-        sort_types = ['kills', 'deaths', 'kd', 'kk', 'cores_leaked', 'wool_placed', 'destroyed_destroyables', 'playing_time']
-        if not time in time_types:
-            raise AttributeError('Invalid sort options.')
-        if not game in game_types:
-            raise AttributeError('Invalid sort options.')
-        if not sort in sort_types:
-            raise AttributeError('Invalid sort options.')
+    def getStats(self, *page_nums):
         url_list = []
         if len(page_nums) > 1:
             for i in page_nums:
@@ -140,15 +144,15 @@ class Sunshine:
             if page_nums_list:
                 for i in page_nums_list:
                     url_list.append(join('http://', self.url, 'stats',
-                        '?time={0}&game={1}&sort={2}&page={3}'.format(time, game, sort, i)))
+                        '?page={0}'.format(i)))
             elif page_range:
                 for i in range(int(page_range[0]), int(page_range[1])+1):
                     url_list.append(join('http://', self.url, 'stats',
-                        '?time={0}&game={1}&sort={2}&page={3}'.format(time, game, sort, i)))
+                        '?page={0}'.format(i)))
             elif len(page_range) == 0 and len(page_nums_list) == 0:
                 for i in page_nums:
                     url_list.append(join('http://', self.url, 'stats',
-                        '?time={0}&game={1}&sort={2}&page={3}'.format(time, game, sort, i)))
+                        '?page={0}'.format(i)))
         return SunshineStats(url_list)
     def getTournament(self, name):
         if name.count(' ') >= 1:
@@ -177,9 +181,49 @@ class Sunshine:
             return unirest.get(join('http://', self.url, 'alerts'),
                     headers={"Authorization":"Bearer {0}".format(auth_token)}).body['data']
     def getTeam(self, name):
-        self.return_code = unirest.get(join('http://', self.url, 'teams', name)).code
         self.team_url = join('http://', self.url, 'teams', name)
-        if not str(self.return_code).startswith('2'):
-            raise sunshineexceptions.SunshineError(self.return_code)
-        else:
-            return SunshineTeam(self.team_url)
+        return SunshineTeam(self.team_url)
+    def getForumPost(self, post_id, *page_nums):
+        post_urls = []
+        if len(page_nums) == 1 and page_nums[0] == 'all':
+            print unirest.get(join('http://', self.url, 'forums', 'topics', post_id)).body
+            num_of_pages, return_code = unirest.get(join('http://', self.url, 'forums', 'topics', post_id)).body['links']['pagination']['last'], \
+                                        unirest.get(join('http://', self.url, 'forums', 'topics', post_id)).code
+            if not str(return_code).startswith('2'):
+                raise sunshineexceptions.SunshineError(return_code)
+            for i in range(num_of_pages):
+                i += 1
+                post_urls.append(join('http://', self.url, 'forums', 'topics', str(post_id + '?page={0}'.format(str(i)))))
+        elif len(page_nums) == 1:
+            if isinstance(page_nums[0], int):
+                post_urls.append(join('http://', self.url, 'forums', 'topics', str(post_id + '?page={0}'.format(page_nums[0]))))
+            elif isinstance(page_nums[0], str):
+                if page_nums[0].count('-') == 1:
+                    page_range = page_nums[0].split('-')
+                    for item in page_range:
+                        if not item.isdigit():
+                            raise ValueError('Invalid page numbers.')
+                            return
+                        ind=page_range.index(item)
+                        page_range[ind]=int(item)
+                    page_range.sort()
+                    for i in range(page_range[0], page_range[1]+1):
+                        post_urls.append(join('http://', self.url, 'forums', 'topics', str(post_id + '?page={0}'.format(i))))
+                elif page_nums[0].isdigit():
+                    post_urls.append(join('http://', self.url, 'forums' 'topics', str(post_id + '?page={0}'.format(page_nums[0]))))
+                else:
+                    raise ValueError('Invalid page number.')
+        elif len(page_nums) > 1:
+            for item in page_nums:
+                if isinstance(item, str):
+                    if not item.isdigit():
+                        raise ValueError('Invalid page numbers.')
+                        return
+                if not isinstance(item, int):
+                    raise ValueError('Invalid page numbers.')
+                    return
+                post_urls.append(join('http://', self.url, 'forums', 'topics', str(post_id + '?page={0}'.format(str(item)))))
+        elif not page_nums:
+            post_urls.append(join('http://', self.url, 'forums', 'topics', str(post_id + '?page=1')))
+        print post_urls
+        return SunshineTopic(post_urls)
