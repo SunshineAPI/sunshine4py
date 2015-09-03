@@ -3,13 +3,13 @@
 import json
 import unirest
 from sunshine4py import sunshineexceptions
+
 class SunshineTopicPost:
     def __init__(self, data):
         self.id = data['id']
         self.content = data['content']
         self.timestamp = data['timestamp']
         self.author = data['author']
-        print 'post %s created' % (self.id)
         try:
             self.quoting = data['quoting']
         except KeyError:
@@ -17,13 +17,11 @@ class SunshineTopicPost:
 class SunshineTopic:
     def setTopicAttributes(self, data):
         for key, value in data.items():
-            print key
             if key == 'data':
                 for attr, val in value.items():
                     setattr(self, attr, val)
                     if attr == 'posts':
                         for item in val:
-                            print item['content'][:10]
                             setattr(self, 'p' + item['id'], SunshineTopicPost(item))
     def __init__(self, urls):
         if len(urls) == 1:
@@ -45,3 +43,4 @@ class SunshineTopic:
                 if not str(self.return_code).startswith('2'):
                     raise sunshineexceptions.SunshineError(self.return_code)
                 self.topic_data['data']['posts'] += unirest.get(url, headers={"Accept":"application/json"}).body['data']['posts']
+            self.setTopicAttributes(self.topic_data)

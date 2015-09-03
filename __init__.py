@@ -35,9 +35,8 @@ except ImportError as e:
 except Exception:
     print 'Unexpected exception'
 
-
-from sunshine4py import Players
 from sunshine4py import sunshineexceptions
+from sunshine4py import Players
 from sunshine4py import Teams
 from sunshine4py import Stats
 from sunshine4py import Tournaments
@@ -50,6 +49,7 @@ from Stats.stat import SunshineStats
 from Tournaments.tournament import SunshineTournament
 from Tournaments.tournaments import SunshineTournamentList
 from Forums.forum_topic import SunshineTopic
+from Forums.forum_category import SunshineForumCategory
 import json
 import urllib
 import socket
@@ -225,5 +225,47 @@ class Sunshine:
                 post_urls.append(join('http://', self.url, 'forums', 'topics', str(post_id + '?page={0}'.format(str(item)))))
         elif not page_nums:
             post_urls.append(join('http://', self.url, 'forums', 'topics', str(post_id + '?page=1')))
-        print post_urls
         return SunshineTopic(post_urls)
+    def getForumCategory(self, cat_id, *page_nums):
+        cat_urls = []
+        if len(page_nums) == 1 and page_nums[0] == 'all':
+            print unirest.get(join('http://', self.url, 'forums', 'topics', post_id)).body
+            num_of_pages, return_code = unirest.get(join('http://', self.url, 'forums', cat_id)).body['links']['pagination']['last'], \
+                                        unirest.get(join('http://', self.url, 'forums', cat_id)).code
+            if not str(return_code).startswith('2'):
+                raise sunshineexceptions.SunshineError(return_code)
+            for i in range(num_of_pages):
+                i += 1
+                cat_urls.append(join('http://', self.url, 'forums', str(cat_id + '?page={0}'.format(str(i)))))
+        elif len(page_nums) == 1:
+            if isinstance(page_nums[0], int):
+                cat_urls.append(join('http://', self.url, 'forums', str(cat_id + '?page={0}'.format(page_nums[0]))))
+            elif isinstance(page_nums[0], str):
+                if page_nums[0].count('-') == 1:
+                    page_range = page_nums[0].split('-')
+                    for item in page_range:
+                        if not item.isdigit():
+                            raise ValueError('Invalid page numbers.')
+                            return
+                        ind=page_range.index(item)
+                        page_range[ind]=int(item)
+                    page_range.sort()
+                    for i in range(page_range[0], page_range[1]+1):
+                        cat_urls.append(join('http://', self.url, 'forums', str(cat_id + '?page={0}'.format(i))))
+                elif page_nums[0].isdigit():
+                    cat_urls.append(join('http://', self.url, 'forums', str(cat_id + '?page={0}'.format(page_nums[0]))))
+                else:
+                    raise ValueError('Invalid page number.')
+        elif len(page_nums) > 1:
+            for item in page_nums:
+                if isinstance(item, str):
+                    if not item.isdigit():
+                        raise ValueError('Invalid page numbers.')
+                        return
+                if not isinstance(item, int):
+                    raise ValueError('Invalid page numbers.')
+                    return
+                cat_urls.append(join('http://', self.url, 'forums', str(cat_id + '?page={0}'.format(str(item)))))
+        elif not page_nums:
+            cat_urls.append(join('http://', self.url, 'forums', str(cat_id + '?page=1')))
+        return SunshineForumCategory(cat_urls, self.url)
