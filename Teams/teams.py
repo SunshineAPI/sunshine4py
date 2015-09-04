@@ -2,7 +2,7 @@
 
 import unirest
 import json
-from sunshine4py import sunshineexceptions
+from sunshine4py.sunshineexceptions import checkCode
 
 class SunshineTeams:
     def setTeamList(self, data):
@@ -19,8 +19,7 @@ class SunshineTeams:
     def __init__(self, urls):
         print urls
         self.teams_data, self.return_code = json.dumps(unirest.get(urls[0],  headers={'Accept':'application/json'}).body), unirest.get(urls[0]).code
-        if not str(self.return_code).startswith('2'):
-            raise sunshineexceptions.SunshineError(self.return_code)
+        checkCode(self.return_code)
         self.parsed_data = json.loads(self.teams_data)
         for url in urls:
             if urls.index(url) == 0:
@@ -28,8 +27,7 @@ class SunshineTeams:
             else:
                 self.parsed_data['data'] += json.loads(json.dumps(unirest.get(url, headers={'Accept':'application/json'}).body))['data']
                 self.return_code = unirest.get(url).code
-                if not str(self.return_code.startswith('2')):
-                    raise sunshineexceptions.SunshineError(self.return_code)
+                checkCode(self.return_code)
         self.teams = {}
         self.team_list = []
         self.setTeamList(self.parsed_data)

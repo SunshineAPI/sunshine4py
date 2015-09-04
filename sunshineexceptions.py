@@ -21,3 +21,7 @@ class SunshineError(BaseSunshineException):
             raise SunshineClientError(code)
         elif self.code.startswith('5'):
             raise SunshineServerError(code)
+
+def checkCode(code):
+    if not str(code).startswith('2'):
+        raise SunshineError(code)

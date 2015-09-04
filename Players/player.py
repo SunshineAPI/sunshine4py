@@ -2,7 +2,7 @@
 
 import unirest
 import json
-from sunshine4py import sunshineexceptions
+from sunshine4py.sunshineexceptions import checkCode
 
 class SunshinePlayer:
     def setPlayerAttributes(self, data):
@@ -21,8 +21,7 @@ class SunshinePlayer:
         self.name = name
         self.player_data, self.return_code = json.dumps(unirest.get('http://' + url, header={"Accept":"application/json"}).body), \
         unirest.get('http://' + url).code
-        if not str(self.return_code).startswith('2'):
-            raise sunshineexceptions.SunshineError(self.return_code)
+        checkCode(self.return_code)
         parsed_data = json.loads(self.player_data)
         self.dict_name=''
         self.setPlayerAttributes(parsed_data)

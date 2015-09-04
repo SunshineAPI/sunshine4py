@@ -54,6 +54,44 @@ import json
 import urllib
 import socket
 
+def parsePages(list, form, *page_nums):
+    page_nums = page_nums[0]
+    if len(page_nums) == 1:
+        if isinstance(page_nums[0], int):
+            list.append(form.format(page_nums[0]))
+        elif isinstance(page_nums[0], str):
+            if page_nums[0].count('-') == 1:
+                page_range = page_nums[0].split('-')
+                for item in page_range:
+                    if not item.isdigit():
+                        raise ValueError('Invalid page numbers.')
+                        return
+                    ind=page_range.index(item)
+                    page_range[ind]=int(item)
+                page_range.sort()
+                for i in range(page_range[0], page_range[1]+1):
+                    list.append(form.format(i))
+            elif page_nums[0].isdigit():
+                list.append(form.format(page_nums[0]))
+            elif page_nums[0] == 'all':
+                num_of_pages, return_code = unirest.get(form.format('')).body['links']['pagination']['last'], \
+                                            unirest.get(form.format('')).code
+                sunshineexceptions.checkCode(return_code)
+                for i in range(num_of_pages):
+                    list.append(form.format(i))
+            else:
+                raise ValueError('Invalid page number.')
+    elif len(page_nums) > 1:
+        for item in page_nums:
+            if isinstance(item, str):
+                if not item.isdigit():
+                    raise ValueError('Invalid page numbers.')
+                    return
+            if not isinstance(item, int):
+                raise ValueError('Invalid page numbers.')
+                return
+            list.append(form.format(str(item)))
+    return list
 class Sunshine:
     """Sunshine class. To create an instance of this class, execute
     sunshine4py.Sunshine(). If you pass in no arguments, it creates
@@ -88,71 +126,13 @@ class Sunshine:
         player_url = join(self.url, 'players', name)
         return SunshinePlayer(name, player_url)
     def getTeams(self, *page_nums):
+        print 'teams args' + str(page_nums)
         teams_urls = []
-        print page_nums
-        if len(page_nums) == 1:
-            if isinstance(page_nums[0], int):
-                teams_urls.append(join('http://', self.url, 'teams', '?page={0}'.format(page_nums[0])))
-            elif isinstance(page_nums[0], str):
-                if page_nums[0].count('-') == 1:
-                    page_range = page_nums[0].split('-')
-                    for item in page_range:
-                        if not item.isdigit():
-                            raise ValueError('Invalid page numbers.')
-                            return
-                        ind=page_range.index(item)
-                        page_range[ind]=int(item)
-                    page_range.sort()
-                    for i in range(page_range[0], page_range[1]+1):
-                        teams_urls.append(join('http://', self.url, 'teams', '?page={0}'.format(i)))
-                elif page_nums[0].isdigit():
-                    teams_urls.append(join('http://', self.url, 'teams', '?page={0}'.format(page_nums[0])))
-                else:
-                    raise ValueError('Invalid page number.')
-        elif len(page_nums) > 1:
-            for item in page_nums:
-                if isinstance(item, str):
-                    if not item.isdigit():
-                        raise ValueError('Invalid page numbers.')
-                        return
-                if not isinstance(item, int):
-                    raise ValueError('Invalid page numbers.')
-                    return
-                teams_urls.append(join('http://', self.url, 'teams', '?page={0}'.format(str(item))))
+        parsePages(teams_urls, join('http://', self.url, 'teams', '?page={0}'), page_nums)
         return SunshineTeams(teams_urls)
     def getStats(self, *page_nums):
         url_list = []
-        if len(page_nums) > 1:
-            for i in page_nums:
-                assert isinstance(i, int)
-        elif len(page_nums) == 1:
-            page_nums_list = []
-            page_range = []
-            assert isinstance(page_nums[0], int) or isinstance(page_nums[0], str)
-            page_nums = str(page_nums[0])
-            if isinstance(page_nums, str):
-                if page_nums.count(',') >= 1:
-                    page_nums_list = page_nums.split(',')
-                    for i in page_nums_list:
-                        assert i.isdigit()
-                elif page_nums.count('-') == 1:
-                    page_range = page_nums.split('-')
-                    assert len(page_range) == 2
-                    for i in page_range:
-                        assert i.isdigit()
-                        page_range[page_range.index(i)] = int(i)
-            if page_nums_list:
-                for i in page_nums_list:
-                    url_list.append(join('http://', self.url, 'stats',
-                        '?page={0}'.format(i)))
-            elif page_range:
-                for i in range(int(page_range[0]), int(page_range[1])+1):
-                    url_list.append(join('http://', self.url, 'stats',
-                        '?page={0}'.format(i)))
-            elif len(page_range) == 0 and len(page_nums_list) == 0:
-                for i in page_nums:
-                    url_list.append(join('http://', self.url, 'stats',
-                        '?page={0}'.format(i)))
+        parsePages(url_list, join('http://', self.url, 'stats', '?page={0}'), page_nums)
         return SunshineStats(url_list)
     def getTournament(self, name):
         if name.count(' ') >= 1:
@@ -183,89 +163,11 @@ class Sunshine:
     def getTeam(self, name):
         self.team_url = join('http://', self.url, 'teams', name)
         return SunshineTeam(self.team_url)
-    def getForumPost(self, post_id, *page_nums):
+    def getForumTopic(self, post_id, *page_nums):
         post_urls = []
-        if len(page_nums) == 1 and page_nums[0] == 'all':
-            print unirest.get(join('http://', self.url, 'forums', 'topics', post_id)).body
-            num_of_pages, return_code = unirest.get(join('http://', self.url, 'forums', 'topics', post_id)).body['links']['pagination']['last'], \
-                                        unirest.get(join('http://', self.url, 'forums', 'topics', post_id)).code
-            if not str(return_code).startswith('2'):
-                raise sunshineexceptions.SunshineError(return_code)
-            for i in range(num_of_pages):
-                i += 1
-                post_urls.append(join('http://', self.url, 'forums', 'topics', str(post_id + '?page={0}'.format(str(i)))))
-        elif len(page_nums) == 1:
-            if isinstance(page_nums[0], int):
-                post_urls.append(join('http://', self.url, 'forums', 'topics', str(post_id + '?page={0}'.format(page_nums[0]))))
-            elif isinstance(page_nums[0], str):
-                if page_nums[0].count('-') == 1:
-                    page_range = page_nums[0].split('-')
-                    for item in page_range:
-                        if not item.isdigit():
-                            raise ValueError('Invalid page numbers.')
-                            return
-                        ind=page_range.index(item)
-                        page_range[ind]=int(item)
-                    page_range.sort()
-                    for i in range(page_range[0], page_range[1]+1):
-                        post_urls.append(join('http://', self.url, 'forums', 'topics', str(post_id + '?page={0}'.format(i))))
-                elif page_nums[0].isdigit():
-                    post_urls.append(join('http://', self.url, 'forums' 'topics', str(post_id + '?page={0}'.format(page_nums[0]))))
-                else:
-                    raise ValueError('Invalid page number.')
-        elif len(page_nums) > 1:
-            for item in page_nums:
-                if isinstance(item, str):
-                    if not item.isdigit():
-                        raise ValueError('Invalid page numbers.')
-                        return
-                if not isinstance(item, int):
-                    raise ValueError('Invalid page numbers.')
-                    return
-                post_urls.append(join('http://', self.url, 'forums', 'topics', str(post_id + '?page={0}'.format(str(item)))))
-        elif not page_nums:
-            post_urls.append(join('http://', self.url, 'forums', 'topics', str(post_id + '?page=1')))
+        parsePages(post_urls, join('http://', self.url, 'forums', 'topics', post_id, '?page={0}'), page_nums)
         return SunshineTopic(post_urls)
     def getForumCategory(self, cat_id, *page_nums):
         cat_urls = []
-        if len(page_nums) == 1 and page_nums[0] == 'all':
-            print unirest.get(join('http://', self.url, 'forums', 'topics', post_id)).body
-            num_of_pages, return_code = unirest.get(join('http://', self.url, 'forums', cat_id)).body['links']['pagination']['last'], \
-                                        unirest.get(join('http://', self.url, 'forums', cat_id)).code
-            if not str(return_code).startswith('2'):
-                raise sunshineexceptions.SunshineError(return_code)
-            for i in range(num_of_pages):
-                i += 1
-                cat_urls.append(join('http://', self.url, 'forums', str(cat_id + '?page={0}'.format(str(i)))))
-        elif len(page_nums) == 1:
-            if isinstance(page_nums[0], int):
-                cat_urls.append(join('http://', self.url, 'forums', str(cat_id + '?page={0}'.format(page_nums[0]))))
-            elif isinstance(page_nums[0], str):
-                if page_nums[0].count('-') == 1:
-                    page_range = page_nums[0].split('-')
-                    for item in page_range:
-                        if not item.isdigit():
-                            raise ValueError('Invalid page numbers.')
-                            return
-                        ind=page_range.index(item)
-                        page_range[ind]=int(item)
-                    page_range.sort()
-                    for i in range(page_range[0], page_range[1]+1):
-                        cat_urls.append(join('http://', self.url, 'forums', str(cat_id + '?page={0}'.format(i))))
-                elif page_nums[0].isdigit():
-                    cat_urls.append(join('http://', self.url, 'forums', str(cat_id + '?page={0}'.format(page_nums[0]))))
-                else:
-                    raise ValueError('Invalid page number.')
-        elif len(page_nums) > 1:
-            for item in page_nums:
-                if isinstance(item, str):
-                    if not item.isdigit():
-                        raise ValueError('Invalid page numbers.')
-                        return
-                if not isinstance(item, int):
-                    raise ValueError('Invalid page numbers.')
-                    return
-                cat_urls.append(join('http://', self.url, 'forums', str(cat_id + '?page={0}'.format(str(item)))))
-        elif not page_nums:
-            cat_urls.append(join('http://', self.url, 'forums', str(cat_id + '?page=1')))
+        parsePages(post_urls, join('http://', self.url, 'forums', 'topics', cat_id, '?page={0}'), page_nums)
         return SunshineForumCategory(cat_urls, self.url)
