@@ -3,6 +3,7 @@
 import json
 import unirest
 from sunshine4py.sunshineexceptions import checkCode
+from os.path import join
 
 class SunshineTopicPost:
     def __init__(self, data):
@@ -23,20 +24,17 @@ class SunshineTopic:
                     if attr == 'posts':
                         for item in val:
                             setattr(self, 'p' + item['id'], SunshineTopicPost(item))
-    def __init__(self, urls):
-        if len(urls) == 1:
-            url = urls[0]
-            self.topic_data, self.return_code = \
-            unirest.get(url, headers={"Accept":"application/json"}).body, \
-            unirest.get(url).code
-            checkCode(self.return_code)
-            self.setTopicAttributes(self.topic_data)
-        elif len(urls) > 1:
-            self.topic_data, self.return_code = \
-            unirest.get(urls[0], headers={"Accept":"application/json"}).body, \
-            unirest.get(urls[0]).code
-            checkCode(self.return_code)
+        self.reply_url = join('http://', self.url, 'topics', self.id, 'reply')
+    def __init__(self, urls, url):
+        self.url = url
+        self.topic_data, self.return_code = \
+        unirest.get(urls[0], headers={"Accept":"application/json"}).body, \
+        unirest.get(urls[0]).code
+        checkCode(self.return_code)
+        self.setTopicAttributes(self.topic_data)
+        if len(urls) > 1:
             for url in urls:
+                if urls.index(url) == 0: pass
                 self.return_code = unirest.get(url).code
                 checkCode(self.return_code)
                 self.topic_data['data']['posts'] += unirest.get(url, headers={"Accept":"application/json"}).body['data']['posts']
